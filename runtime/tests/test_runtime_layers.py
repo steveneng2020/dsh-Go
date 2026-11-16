@@ -70,6 +70,7 @@ class LayerPackaging(unittest.TestCase):
                               ('python/bin/python3', 'symlink', 'python3.14', 0o777)])
         self.dsh = self.root / 'dsh/node_modules/example/index.js'
         self.bridge = self.root / 'bridge/lib/index.js'
+        self.composer_kit = self.root / 'kit/composer-kit/lib/index.js'
         self.pnpm = self.root / 'pnpm/node_modules/pnpm/bin'
         for path in (self.dsh, self.bridge):
             path.parent.mkdir(parents=True)
@@ -83,7 +84,7 @@ class LayerPackaging(unittest.TestCase):
         self.jni = self.root / 'jni.json'
         self.jni.write_text('{}')
 
-    def command(self, name, *, layered=True, with_python=True, compress='gz'):
+    def command(self, name, *, layered=True, with_python=True, compress='gz', composer_kit=False):
         out = self.root / name
         out.mkdir()
         command = [sys.executable, '-I', str(HERE / 'lib/rtbuild.py'), 'assemble',
@@ -93,6 +94,8 @@ class LayerPackaging(unittest.TestCase):
                    '--report', str(out / 'report.json'), '--compress', compress, '--threads', '4']
         if with_python:
             command += ['--python', str(self.python)]
+        if composer_kit:
+            command += ['--composer-kit', str(self.root / 'kit/composer-kit')]
         if layered:
             command += ['--base-out', str(out / ('base-arm64-v8a.tar.' + compress)),
                         '--engine-out', str(out / ('engine-arm64-v8a.tar.' + compress)),
@@ -219,6 +222,26 @@ class LayerPackaging(unittest.TestCase):
                 self.assertEqual(report['upgrade'], first['upgrade'])
                 self.assertNotEqual(report['layers']['engine']['sha256'], previous_engine)
                 previous_engine = report['layers']['engine']['sha256']
+
+    def test_composer_kit_ships_in_the_engine_layer_with_its_overlay_row(self):
+        self.composer_kit.parent.mkdir(parents=True)
+        self.composer_kit.write_text('composer kit fixture')
+        self.versions['dshComposerKit'] = 'composer-fixture'
+        out, _ = self.build('composer-kit', composer_kit=True)
+        engine = members(out / 'engine-arm64-v8a.tar.gz')
+        self.assertIn('opt/dsh-go/dsh-composer-kit/lib/index.js', engine)
+        overlay = engine['etc/dsh-app/dsh-web.patch.yml'][3].decode()
+        self.assertIn('- id: dsh-composer-kit', overlay)
+        self.assertIn('name: ' + rt.DSH_COMPOSER_KIT + '/lib/index.js', overlay)
+        manifest = self.manifest(out)
+        self.assertEqual(manifest['dshComposerKit'],
+                         {'version': 'composer-fixture', 'path': rt.DSH_COMPOSER_KIT})
+
+    def test_composer_kit_absent_leaves_no_overlay_row(self):
+        out, _ = self.build('without-composer-kit')
+        overlay = members(out / 'engine-arm64-v8a.tar.gz')['etc/dsh-app/dsh-web.patch.yml'][3].decode()
+        self.assertNotIn('dsh-composer-kit', overlay)
+        self.assertIsNone(self.manifest(out)['dshComposerKit'])
 
     def test_no_python_is_explicit_null_in_both_documents(self):
         out, report = self.build('without-python', with_python=False)

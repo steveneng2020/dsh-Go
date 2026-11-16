@@ -19,6 +19,17 @@ Tap the app logo at the top left of the page (above the sidebar on wide screens,
 - **App settings**: the app's full settings.
 - **Switch host**: change hosts; the current one is shown on the right.
 
+## The upload menu on the composer
+
+In DSH Web the paperclip key at the left of the composer opens four choices:
+
+- **Image**: pick several from the photo library; they land in the attachment row above the composer, and tapping a thumbnail opens it full size so you can check before sending.
+- **File**: pick several files from the file manager; they land in the same row.
+- **Folder**: browse the directories of the host running the engine and write a `@` reference to the one you pick into the input box.
+- **Enter path**: type an absolute path or a path relative to the workspace yourself, end it with `/` for a directory, and get the same `@` reference.
+
+The plus key to its left is DSH Web's own entry; it behaves the same way, and the two do not interfere.
+
 ## Phone layout
 
 <!-- nav: commonSettings,hubSettingsInterface,hubInterfacePhoneLayout -->

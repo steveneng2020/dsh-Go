@@ -277,6 +277,7 @@ void main() {
       expect(inventory.isOfficial('@deepseek-ai/dsh-experimental-session-search'), isTrue);
       expect(inventory.isOfficial('dsh-cost-meter'), isFalse);
       expect(inventory.isOfficial('dsh-go-bridge'), isTrue);
+      expect(inventory.isOfficial('dsh-composer-kit'), isTrue);
       expect(inventory.isOfficial('@deepseek-ai/never-heard-of'), isTrue);
       expect(inventory.slots, isNull);
     });
