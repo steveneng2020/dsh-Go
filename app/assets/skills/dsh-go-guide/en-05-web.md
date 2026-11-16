@@ -25,10 +25,10 @@ In DSH Web the paperclip key at the left of the composer opens four choices:
 
 - **Image**: pick several from the photo library; they land in the attachment row above the composer, and tapping a thumbnail opens it full size so you can check before sending.
 - **File**: pick several files from the file manager; they land in the same row.
-- **Folder**: browse the directories of the host running the engine and write a `@` reference to the one you pick into the input box.
-- **Enter path**: type an absolute path or a path relative to the workspace yourself, end it with `/` for a directory, and get the same `@` reference.
+- **Folder**: browse the directories of the host running the engine, step into one, then use the confirm key at the bottom to write a `@` reference to it into the input box.
+- **Enter path**: type an absolute path (or a path relative to the workspace) yourself, end it with `/` for a directory, and get the same `@` reference.
 
-The plus key to its left is DSH Web's own entry; it behaves the same way, and the two do not interfere.
+The plus key to its left is DSH Web's own entry for single files, and the four choices here never touch it.
 
 ## Phone layout
 

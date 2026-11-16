@@ -11,6 +11,9 @@ const source = readFileSync(new URL("../bridge/dsh-composer-kit/lib/client.js", 
 // A hook runtime just good enough to render one function component repeatedly: hook slots
 // keep their value across renders, the cursor resets, effects are collected per render.
 function hooks() {
+  // React keeps one hook list per mounted component type; the menu and the folder
+  // browser therefore never share slots, even though the harness renders one level.
+  let slots = new Map();
   let state = [];
   let cursor = 0;
   let effects = [];
@@ -26,8 +29,11 @@ function hooks() {
     Fragment: Symbol("Fragment"),
     useState: (initial) => {
       const at = slot(typeof initial === "function" ? initial() : initial);
-      return [state[at], (next) => {
-        state[at] = typeof next === "function" ? next(state[at]) : next;
+      // The setter runs from event handlers, long after render restored the outer
+      // list — it must write into the list this component rendered with.
+      const owner = state;
+      return [owner[at], (next) => {
+        owner[at] = typeof next === "function" ? next(owner[at]) : next;
       }];
     },
     useRef: (initial) => {
@@ -66,6 +72,9 @@ function hooks() {
   }
 
   api.render = (component, props) => {
+    const outerState = state;
+    if (!slots.has(component)) slots.set(component, []);
+    state = slots.get(component);
     cursor = 0;
     effects = [];
     const tree = component(props);
@@ -73,11 +82,12 @@ function hooks() {
     effects = [];
     const refs = [];
     commit(tree, refs);
+    state = outerState;
     return { tree, effects: collected, refs };
   };
   api.clicks = () => clicks;
   api.reset = () => {
-    state = [];
+    slots = new Map();
     cursor = 0;
   };
   return api;
@@ -133,7 +143,8 @@ function load({ language = "zh-CN" } = {}) {
             };
           }
           if (name === "@deepseek-ai/dsh-client-ui-primitives") {
-            return { IconPaperclipOutlineMedium: (props) => ({ type: "svg", props: props ?? {}, children: [] }) };
+            const glyph = (props) => ({ type: "svg", props: props ?? {}, children: [] });
+            return { IconPaperclipOutlineMedium: glyph, IconFolderOpenRegular: glyph };
           }
           throw new Error(`unexpected require(${name})`);
         });
@@ -157,7 +168,7 @@ class FakeFile {}
 
 /** The three services the menu reaches for, plus a record of what it asked them to do. */
 function services({ cwd = "/root/work", acceptAttachment = true } = {}) {
-  const calls = { drafts: [], added: [], released: [], inserted: [], folder: 0 };
+  const calls = { drafts: [], added: [], released: [], inserted: [], folder: 0, listed: [] };
   const conversation = {
     input: { shell: () => ({ addFiles: (references, ids) => (calls.added.push({ references, ids }), acceptAttachment) }) },
     createDrafts: (sessionId, files) => {
@@ -167,10 +178,31 @@ function services({ cwd = "/root/work", acceptAttachment = true } = {}) {
     releaseDraftAttachments: (drafts) => calls.released.push(drafts),
   };
   const sessions = { list: { getSnapshot: () => ({ byId: { s1: { cwd } } }) } };
+  // The Android host resolves the `browse` backend, whose capability has no
+  // pick(): the menu must browse with list() alone.
+  const listing = (path) => ({
+    path,
+    home: "/root/work",
+    crumbs: [
+      { name: "/", path: "/", hidden: false },
+      { name: "root", path: "/root", hidden: false },
+      { name: "work", path: "/root/work", hidden: false },
+      ...(path === "/root/work" ? [] : [{ name: "quoted dir", path: "/root/work/quoted dir", hidden: false }]),
+    ],
+    entries:
+      path === "/root/work"
+        ? [{ name: "quoted dir", path: "/root/work/quoted dir", hidden: false }]
+        : [],
+    truncated: false,
+  });
   const workspace = {
     pickDirectory: async () => {
+      throw new Error("browse backend has no pick()");
+    },
+    listDirectory: async (path) => {
       calls.folder += 1;
-      return "/root/work/quoted dir";
+      calls.listed.push(path);
+      return listing(path ?? "/root/work");
     },
   };
   const inputActions = {
@@ -311,15 +343,36 @@ test("输入路径 inserts a relativized mention with the shipped quoting rules"
   assert.deepEqual([...mounted.api.calls.inserted], ["@plain ", '@"with space/ ']);
 });
 
-test("文件夹 turns the picked directory into a directory mention", async () => {
+test("文件夹 opens a browser that lists directories instead of a pick()", async () => {
+  const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
   const mounted = mount();
-  const [trigger] = findAll(mounted.render().tree, byClass("dck-trigger"));
-  trigger.props.onClick();
-  const items = findAll(mounted.render().tree, byRole("menuitem"));
-  items[2].props.onClick();
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  findAll(mounted.render().tree, byClass("dck-trigger"))[0].props.onClick();
+  findAll(mounted.render().tree, byRole("menuitem"))[2].props.onClick();
+  await tick();
 
-  assert.equal(mounted.api.calls.folder, 1, "the picker is asked once");
+  let tree = mounted.render().tree;
+  assert.deepEqual(findAll(tree, byRole("menu")), [], "the menu closes behind the browser");
+  const [browser] = findAll(tree, (item) => typeof item.type === "function" && item.type.name === "FolderBrowser");
+  assert.ok(browser, "文件夹 opens the folder browser");
+
+  // The harness renders one component level, so the browser is mounted explicitly.
+  const first = mounted.lib.react.render(browser.type, browser.props);
+  for (const effect of first.effects) effect();
+  await tick();
+  assert.deepEqual([...mounted.api.calls.listed], [undefined], "the browser starts at the host home");
+
+  tree = mounted.lib.react.render(browser.type, browser.props).tree;
+  const [row] = findAll(tree, byClass("dck-dir"));
+  assert.equal(row.children[1].children[0], "quoted dir", "each row is a child directory");
+  row.props.onClick();
+  await tick();
+  assert.deepEqual([...mounted.api.calls.listed], [undefined, "/root/work/quoted dir"]);
+
+  tree = mounted.lib.react.render(browser.type, browser.props).tree;
+  assert.equal(mounted.api.calls.inserted.length, 0, "browsing alone inserts nothing");
+  const confirm = findAll(tree, byClass("dck-btn")).find((button) => button.children[0] === "使用此文件夹");
+  assert.ok(confirm, "the confirm button offers the current folder");
+  confirm.props.onClick();
   assert.deepEqual([...mounted.api.calls.inserted], ['@"quoted dir/ ']);
 });
 

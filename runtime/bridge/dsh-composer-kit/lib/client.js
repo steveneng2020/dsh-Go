@@ -23,14 +23,18 @@ window.__ModuleLoader__.load({
 				file: "文件",
 				folder: "文件夹",
 				path: "输入路径",
-				pathTitle: "输入路径",
-				pathHint: "绝对路径或相对工作区的路径",
-				pathLabel: "路径",
+				pathTitle: "输入文件路径",
+				pathHint: "支持任意本地绝对路径下的文件和文件夹",
+				pathLabel: "绝对路径",
 				cancel: "取消",
-				insert: "插入",
+				insert: "添加",
 				busy: "处理中…",
 				noSession: "会话不可用，无法上传文件",
-				pickFolder: "选择文件夹"
+				folderTitle: "选择文件夹",
+				folderHome: "主目录",
+				folderUse: "使用此文件夹",
+				folderEmpty: "这个文件夹里没有子文件夹",
+				folderFailed: "读不到这个文件夹"
 			},
 			en: {
 				trigger: "Upload menu",
@@ -38,14 +42,18 @@ window.__ModuleLoader__.load({
 				file: "File",
 				folder: "Folder",
 				path: "Enter path",
-				pathTitle: "Enter path",
-				pathHint: "Absolute path, or a path relative to the workspace",
-				pathLabel: "Path",
+				pathTitle: "Enter a file path",
+				pathHint: "Any absolute path on this machine, file or folder",
+				pathLabel: "Absolute path",
 				cancel: "Cancel",
-				insert: "Insert",
+				insert: "Add",
 				busy: "Working…",
 				noSession: "This session cannot take uploads",
-				pickFolder: "Pick a folder"
+				folderTitle: "Choose a folder",
+				folderHome: "Home",
+				folderUse: "Use this folder",
+				folderEmpty: "No subfolders here",
+				folderFailed: "Cannot read this folder"
 			}
 		};
 
@@ -100,6 +108,19 @@ window.__ModuleLoader__.load({
 .dck-btn[data-variant=cancel]{background:none;border-color:var(--dsw-alias-border-l2,rgba(0,0,0,.14));color:var(--dsw-alias-label-secondary,#5c5c5c)}
 .dck-btn[data-variant=ok]{background:var(--dsw-alias-button-primary-fill,#3b6cf0);color:#fff}
 .dck-btn:disabled{opacity:.5;cursor:default}
+.dck-card[data-kind=folder]{display:flex;flex-direction:column;max-height:min(78vh,620px)}
+.dck-crumbs{display:flex;align-items:center;gap:2px;margin:0 0 10px;overflow-x:auto;white-space:nowrap;scrollbar-width:none}
+.dck-crumbs::-webkit-scrollbar{display:none}
+.dck-crumb{flex:0 0 auto;padding:4px 6px;border:0;border-radius:var(--dsw-radius-xs,6px);background:none;font:inherit;font-size:12.5px;color:var(--dsw-alias-label-secondary,#5c5c5c);cursor:pointer;max-width:158px;overflow:hidden;text-overflow:ellipsis;-webkit-tap-highlight-color:transparent}
+.dck-crumb:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.06))}
+.dck-crumb[data-current=true]{color:var(--dsw-alias-label-primary,#1a1a1a);font-weight:600}
+.dck-crumb-sep{flex:0 0 auto;color:var(--dsw-alias-label-tertiary,#8a8a8a);font-size:11px}
+.dck-list{flex:1 1 auto;min-height:120px;overflow-y:auto;margin:0 -6px;padding:0 6px;overscroll-behavior:contain}
+.dck-dir{display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;padding:10px 8px;border:0;border-radius:var(--dsw-radius-sm,8px);background:none;cursor:pointer;text-align:left;font:inherit;font-size:14px;color:var(--dsw-alias-label-primary,#1a1a1a);-webkit-tap-highlight-color:transparent}
+.dck-dir:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.06))}
+.dck-dir-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dck-note{padding:16px 8px;text-align:center;font-size:13px;color:var(--dsw-alias-label-tertiary,#8a8a8a)}
+.dck-pathbar{margin:10px 0 0;font-size:12px;line-height:17px;color:var(--dsw-alias-label-tertiary,#8a8a8a);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
 `;
 
 		function ensureStyles() {
@@ -167,7 +188,7 @@ window.__ModuleLoader__.load({
 							spellCheck: false,
 							autoCapitalize: "off",
 							autoCorrect: "off",
-							placeholder: "/sdcard/Download",
+							placeholder: dict.pathLabel,
 							"aria-label": dict.pathLabel,
 							onChange: (event) => setValue(event.target.value),
 							onKeyDown: (event) => {
@@ -203,6 +224,149 @@ window.__ModuleLoader__.load({
 			);
 		}
 
+		// ── folder browser ──────────────────────────────────────────────────
+		/**
+		 * Pick a directory through the host's `browse` backend. The composer runs
+		 * on hosts whose directory picker may have no `pick()` at all (the browse
+		 * backend only lists), so the browser is built from `listDirectory` — the
+		 * one primitive every backend serves.
+		 */
+		function FolderBrowser({ dict, workspace, onSubmit, onClose }) {
+			const [listing, setListing] = React.useState(null);
+			const [error, setError] = React.useState(false);
+			// Starts true: the first listing is in flight from the very first paint,
+			// so the browser never flashes "cannot read" before it answers.
+			const [busy, setBusy] = React.useState(true);
+			const seq = React.useRef(0);
+
+			const load = React.useCallback(
+				async (path) => {
+					const turn = ++seq.current;
+					setBusy(true);
+					setError(false);
+					try {
+						const next = await workspace.listDirectory(path);
+						if (turn !== seq.current || next === void 0) return;
+						setListing(next);
+					} catch (failure) {
+						if (turn !== seq.current) return;
+						console.warn("[dsh-composer-kit] list failed", failure);
+						setError(true);
+					} finally {
+						if (turn === seq.current) setBusy(false);
+					}
+				},
+				[workspace]
+			);
+
+			React.useEffect(() => {
+				load(void 0);
+				return () => {
+					seq.current += 1;
+				};
+			}, [load]);
+
+			const entries = listing === null ? [] : listing.entries;
+			const current = listing === null ? "" : listing.path;
+
+			const crumbs =
+				listing === null
+					? null
+					: h(
+							"nav",
+							{ className: "dck-crumbs", "aria-label": dict.folderTitle },
+							listing.crumbs.flatMap((crumb, index) => {
+								const at = crumb.path;
+								const label = at === listing.home ? dict.folderHome : crumb.name;
+								const seat = h(
+									"button",
+									{
+										key: `crumb-${at}`,
+										type: "button",
+										className: "dck-crumb",
+										"data-current": at === current ? "true" : "false",
+										title: at,
+										onClick: () => void load(at)
+									},
+									label
+								);
+								return index === 0
+									? [seat]
+									: [h("span", { key: `sep-${at}`, className: "dck-crumb-sep" }, "/"), seat];
+							})
+						);
+
+			const body =
+				listing === null
+					? h("p", { className: "dck-note" }, busy ? dict.busy : dict.folderFailed)
+					: entries.length === 0
+						? h("p", { className: "dck-note" }, dict.folderEmpty)
+						: h(
+								"div",
+								{ className: "dck-list", role: "listbox", "aria-label": dict.folderTitle },
+								entries.map((entry) =>
+									h(
+										"button",
+										{
+											key: entry.path,
+											type: "button",
+											role: "option",
+											"aria-selected": false,
+											className: "dck-dir",
+											title: entry.path,
+											onClick: () => void load(entry.path)
+										},
+										h(primitives.IconFolderOpenRegular, { size: 16 }),
+										h("span", { className: "dck-dir-name" }, entry.name)
+									)
+								)
+							);
+
+			return ReactDOM.createPortal(
+				h(
+					"div",
+					{
+						className: "dck-modal",
+						onMouseDown: (event) => {
+							if (event.target === event.currentTarget) onClose();
+						}
+					},
+					h(
+						"div",
+						{ className: "dck-card", "data-kind": "folder", role: "dialog", "aria-label": dict.folderTitle },
+						h("p", { className: "dck-title" }, dict.folderTitle),
+						crumbs,
+						error ? h("p", { className: "dck-note" }, dict.folderFailed) : body,
+						h("p", { className: "dck-pathbar", title: current }, current),
+						h(
+							"div",
+							{ className: "dck-row" },
+							h(
+								"button",
+								{ type: "button", className: "dck-btn", "data-variant": "cancel", onClick: onClose },
+								dict.cancel
+							),
+							h(
+								"button",
+								{
+									type: "button",
+									className: "dck-btn",
+									"data-variant": "ok",
+									disabled: busy || listing === null || current === "",
+									onClick: () => {
+										if (listing === null || current === "") return;
+										if (onSubmit(current) === true) onClose();
+									}
+								},
+								dict.folderUse
+							)
+						)
+					)
+				),
+				document.body
+			);
+		}
+
 		// ── the composer entry ──────────────────────────────────────────────
 		/**
 		 * Build the seat component. The entry cannot read cordis, so the plugin
@@ -214,6 +378,7 @@ window.__ModuleLoader__.load({
 				const dict = React.useMemo(() => pickDict(), []);
 				const [open, setOpen] = React.useState(false);
 				const [dialog, setDialog] = React.useState(false);
+				const [folderDialog, setFolderDialog] = React.useState(false);
 				const [anchor, setAnchor] = React.useState(null);
 				const [busy, setBusy] = React.useState(false);
 				const triggerRef = React.useRef(null);
@@ -307,25 +472,10 @@ window.__ModuleLoader__.load({
 					[attachFiles]
 				);
 
-				const pickFolder = React.useCallback(async () => {
+				const pickFolder = React.useCallback(() => {
 					setOpen(false);
-					const workspace = services.workspace;
-					if (workspace === void 0 || typeof workspace.pickDirectory !== "function") {
-						setDialog(true);
-						return;
-					}
-					setBusy(true);
-					try {
-						const path = await workspace.pickDirectory();
-						if (typeof path !== "string" || path === "") return;
-						insertMention(path, true);
-					} catch (error) {
-						console.warn("[dsh-composer-kit] folder pick failed", error);
-						setDialog(true);
-					} finally {
-						setBusy(false);
-					}
-				}, [insertMention, services]);
+					setFolderDialog(true);
+				}, []);
 
 				const submitPath = React.useCallback(
 					(text) => {
@@ -342,7 +492,12 @@ window.__ModuleLoader__.load({
 				const items = [
 					{ id: "image", label: dict.image, run: () => pickFiles("image") },
 					{ id: "file", label: dict.file, run: () => pickFiles("file") },
-					{ id: "folder", label: dict.folder, run: () => void pickFolder() },
+					{
+						id: "folder",
+						label: dict.folder,
+						disabled: services.workspace === void 0,
+						run: pickFolder
+					},
 					{ id: "path", label: dict.path, run: () => { setOpen(false); setDialog(true); } }
 				];
 
@@ -368,6 +523,7 @@ window.__ModuleLoader__.load({
 													type: "button",
 													role: "menuitem",
 													className: "dck-item",
+													disabled: item.disabled === true,
 													onClick: () => item.run()
 												},
 												item.label
@@ -413,6 +569,14 @@ window.__ModuleLoader__.load({
 								dict,
 								onSubmit: submitPath,
 								onClose: () => setDialog(false)
+							})
+						: null,
+					folderDialog && services.workspace !== void 0
+						? h(FolderBrowser, {
+								dict,
+								workspace: services.workspace,
+								onSubmit: (path) => insertMention(path, true),
+								onClose: () => setFolderDialog(false)
 							})
 						: null,
 				);
