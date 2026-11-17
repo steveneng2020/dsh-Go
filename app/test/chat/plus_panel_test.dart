@@ -155,10 +155,41 @@ void main() {
       }
     }
 
-    testWidgets('a new chat has tiles only', (tester) async {
+    testWidgets('a new chat has no 本对话 card', (tester) async {
       await _openPanel(tester, session: null);
       expect(find.text('本对话'), findsNothing);
-      expect(find.byType(ListPageCard), findsNothing);
+    });
+
+    testWidgets('引用路径 offers 文件夹 and 输入路径, each closing with its choice', (tester) async {
+      for (final (label, source) in [
+        ('文件夹', AttachSource.folder),
+        ('输入路径', AttachSource.path),
+      ]) {
+        PlusChoice? picked;
+        tester.view.devicePixelRatio = 2;
+        tester.view.physicalSize = const Size(780, 1688);
+        addTearDown(tester.view.reset);
+        final harness = ChatHarness(session: 's1');
+        await tester.pumpWidget(
+          testApp(
+            Builder(
+              builder: (context) => Scaffold(
+                body: TextButton(
+                  onPressed: () async => picked = await showPlusPanel(context, sessionId: 's1'),
+                  child: const Text('打开'),
+                ),
+              ),
+            ),
+            overrides: harness.overrides,
+          ),
+        );
+        await tester.tap(find.text('打开'));
+        await pumpFrames(tester);
+        expect(find.text('引用路径'), findsOneWidget);
+        await tester.tap(find.text(label));
+        await pumpFrames(tester);
+        expect(picked, isA<AttachChoice>().having((v) => v.source, 'source', source));
+      }
     });
 
     testWidgets('生成 closes the panel with its choice', (tester) async {

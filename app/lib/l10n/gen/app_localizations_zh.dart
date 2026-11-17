@@ -3955,6 +3955,15 @@ class L10nZh extends L10n {
   String get chatFolder => '文件夹';
 
   @override
+  String get chatEnterPath => '输入路径';
+
+  @override
+  String get chatReferenceUnsupported => '这个路径写不成引用';
+
+  @override
+  String get chatReferenceTitle => '引用路径';
+
+  @override
   String get chatChat => '对话';
 
   @override

@@ -1,0 +1,5 @@
+# Layer applied when a profile lists this bundle (`dsh plugin add dsh-composer-kit`
+# on a remote host). The dsh-app runtime loads it by path from a patch overlay.
+- insert:
+    - id: dsh-composer-kit
+      name: dsh-composer-kit

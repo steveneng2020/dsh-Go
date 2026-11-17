@@ -7,9 +7,15 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { posix } from "node:path";
 
-const ROOT = new URL("../bridge/dsh-go-bridge/", import.meta.url);
+const PACKAGES = [
+  // The walk must have followed the graph, or it would pass with nothing to check.
+  { name: "dsh-go-bridge", root: new URL("../bridge/dsh-go-bridge/", import.meta.url),
+    reached: ["lib/session-deletion.js", "lib/native/core.js"] },
+  { name: "dsh-composer-kit", root: new URL("../bridge/dsh-composer-kit/", import.meta.url),
+    reached: ["lib/index.js", "lib/client.js"] },
+];
 
-function packedFiles() {
+function packedFiles(ROOT) {
   const out = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
     cwd: ROOT,
     encoding: "utf8",
@@ -18,7 +24,7 @@ function packedFiles() {
   return new Set(JSON.parse(out)[0].files.map((file) => file.path));
 }
 
-function localImports(file) {
+function localImports(file, ROOT) {
   const text = readFileSync(new URL(file, ROOT), "utf8");
   const references = [...text.matchAll(/^\s*(?:import|export)\b[^'"]*?from\s*['"](\.[^'"]+)['"]/gm),
     ...text.matchAll(/\bimport\(\s*['"](\.[^'"]+)['"]\s*\)/g)];
@@ -27,18 +33,20 @@ function localImports(file) {
   );
 }
 
-test("the npm package holds everything its entry points import", () => {
-  const { exports: entries } = JSON.parse(readFileSync(new URL("package.json", ROOT), "utf8"));
-  const queue = Object.values(entries).filter((target) => target.endsWith(".js")).map(posix.normalize);
-  const packed = packedFiles();
-  const seen = new Set();
-  while (queue.length > 0) {
-    const file = queue.pop();
-    if (seen.has(file)) continue;
-    seen.add(file);
-    assert.ok(packed.has(file), `${file} is imported but missing from "files"`);
-    queue.push(...localImports(file));
-  }
-  // The walk must have followed the graph, or it would pass with nothing to check.
-  assert.ok(seen.has("lib/session-deletion.js") && seen.has("lib/native/core.js"));
-});
+for (const { name, root, reached } of PACKAGES) {
+  test(`${name} ships everything its entry points import`, () => {
+    const { exports: entries } = JSON.parse(readFileSync(new URL("package.json", root), "utf8"));
+    const queue = Object.values(entries).filter((target) => target.endsWith(".js")).map(posix.normalize);
+    const packed = packedFiles(root);
+    const seen = new Set();
+    while (queue.length > 0) {
+      const file = queue.pop();
+      if (seen.has(file)) continue;
+      seen.add(file);
+      assert.ok(packed.has(file), `${name}: ${file} is imported but missing from "files"`);
+      queue.push(...localImports(file, root));
+    }
+    // The walk must have followed the graph, or it would pass with nothing to check.
+    for (const file of reached) assert.ok(seen.has(file), `${name}: the walk never reached ${file}`);
+  });
+}

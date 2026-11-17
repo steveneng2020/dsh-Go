@@ -29,6 +29,8 @@ NPMJS = "https://registry.npmjs.org/"
 DSH_WEB_PATCH = "/etc/dsh-app/dsh-web.patch.yml"
 # Where runtime/bridge/dsh-go-bridge lands in the rootfs (loaded by absolute path from the overlay).
 DSH_GO_BRIDGE = "/opt/dsh-go/dsh-go-bridge"
+# Where runtime/bridge/dsh-composer-kit lands (same overlay, same reasoning).
+DSH_COMPOSER_KIT = "/opt/dsh-go/dsh-composer-kit"
 # runtime/boot/boot-cache.mjs: path cache for `dsh web` while it boots, preloaded by the dsh shim.
 BOOT_CACHE = "/opt/dsh-go/boot-cache.mjs"
 BOOT_CACHE_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "boot", "boot-cache.mjs")
@@ -944,7 +946,8 @@ def bridge_shared_rows():
                         "name: %s/lib/companion/full-context.js" % DSH_GO_BRIDGE)
 
 
-def overlay_entries(runtime_info, with_python=False, with_pnpm=False, with_bridge=False):
+def overlay_entries(runtime_info, with_python=False, with_pnpm=False, with_bridge=False,
+                   with_composer_kit=False):
     """Files dsh-app adds to the rootfs. Kept here so the recipe lives in one place."""
     E = {}
 
@@ -1014,7 +1017,7 @@ def overlay_entries(runtime_info, with_python=False, with_pnpm=False, with_bridg
         # what `npm i -g pnpm` creates under npm's global prefix (/usr/local)
         for name, target in PNPM_BINS.items():
             s("usr/local/bin/" + name, "../lib/node_modules/pnpm/bin/" + target)
-    if with_pnpm or with_bridge:
+    if with_pnpm or with_bridge or with_composer_kit:
         patch = ("# dsh-app: overlay for `dsh web`, passed with --patch by the app's launch command and\n"
                  "# replaced on every runtime upgrade (edits here do not survive one).\n")
         if with_pnpm:
@@ -1039,6 +1042,14 @@ def overlay_entries(runtime_info, with_python=False, with_pnpm=False, with_bridg
                       "    - id: dsh-go-bridge\n"
                       "      name: %s/lib/index.js\n" % DSH_GO_BRIDGE)
             patch += bridge_shared_rows()
+        if with_composer_kit:
+            patch += ("#\n"
+                      "# dsh-composer-kit: the composer upload menu (image, file, folder, path), loaded by\n"
+                      "# path. Do not also install dsh-composer-kit into a profile: two sources of one\n"
+                      "# browser package fail the client composition.\n"
+                      "- insert:\n"
+                      "    - id: dsh-composer-kit\n"
+                      "      name: %s/lib/index.js\n" % DSH_COMPOSER_KIT)
         f(DSH_WEB_PATCH.lstrip("/"), patch)
     d("root/.dsh", 0o700)
     d("root/.l2s", 0o700)          # PROOT_L2S_DIR: hard-link backing files (kept with /root on upgrade)
@@ -1545,10 +1556,14 @@ def cmd_assemble(args):
                  "pnpm", pnpm_drop_reason)
     if args.bridge:
         add_tree(args.bridge, DSH_GO_BRIDGE.lstrip("/"), "bridge", lambda rel, abi, prune: None)
+    if args.composer_kit:
+        add_tree(args.composer_kit, DSH_COMPOSER_KIT.lstrip("/"), "bridge",
+                 lambda rel, abi, prune: None)
 
     # 4. dsh-app overlay (wins over everything above)
     for p, e in overlay_entries(runtime_info, with_python=bool(args.python), with_pnpm=bool(args.pnpm_prefix),
-                                with_bridge=bool(args.bridge)).items():
+                                with_bridge=bool(args.bridge),
+                                with_composer_kit=bool(args.composer_kit)).items():
         entries[p] = e
 
     # 5. ELF audit + arch/libc pruning; Termux-style fixes for node-pty helpers
@@ -1800,6 +1815,8 @@ def cmd_manifest(args):
         "prootVersion": v["prootVersion"],
         "dshPatches": v.get("dshPatches", []),
         "dshGoBridge": {"version": v["dshGoBridge"], "path": DSH_GO_BRIDGE} if v.get("dshGoBridge") else None,
+        "dshComposerKit": {"version": v["dshComposerKit"], "path": DSH_COMPOSER_KIT}
+        if v.get("dshComposerKit") else None,
         "tallocVersion": v["tallocVersion"],
         "androidShmemVersion": v["androidShmemVersion"],
         "npmRegistry": "https://registry.npmmirror.com",
@@ -1898,6 +1915,8 @@ def main():
     p.add_argument("--deb", action="append", help="extra .deb to unpack and register (no maintainer scripts)")
     p.add_argument("--python", help="python-build-standalone install_only tarball -> /opt/python")
     p.add_argument("--bridge", help="dsh-go-bridge package dir -> " + DSH_GO_BRIDGE + " (+ overlay row)")
+    p.add_argument("--composer-kit",
+                   help="dsh-composer-kit package dir -> " + DSH_COMPOSER_KIT + " (+ overlay row)")
     p.set_defaults(fn=cmd_assemble)
 
     p = sub.add_parser("manifest")

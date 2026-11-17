@@ -17,6 +17,7 @@
 
 import 'dart:async';
 
+import 'package:dsh_client/dsh_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,7 +46,10 @@ import '../../theme/app_icons.dart';
 import '../../theme/theme.dart';
 
 /// Where a picked attachment comes from.
-enum AttachSource { gallery, camera, files }
+///
+/// [folder] and [path] do not attach anything: they put an `@path` reference
+/// into the draft, for a workspace folder or a typed absolute path.
+enum AttachSource { gallery, camera, files, folder, path }
 
 /// What the ＋ panel was closed with.
 sealed class PlusChoice {
@@ -160,6 +164,7 @@ class _PlusRoot extends ConsumerWidget {
             ],
           ),
         ),
+        const _ReferenceCard(),
         const _PluginTools(),
         if (sessionId != null) ...[const SizedBox(height: 16), _ThisChatCard(sessionId: sessionId)],
         if (phoneOn) ...[const SizedBox(height: 24), const _PhoneCard()],
@@ -170,6 +175,40 @@ class _PlusRoot extends ConsumerWidget {
         ],
         const SizedBox(height: 20),
       ],
+    );
+  }
+}
+
+/// 引用路径: a workspace folder or a typed absolute path as an `@path`
+/// reference in the draft — not an attachment. Shown only while the live
+/// host can resolve references, so a row never opens a dead end.
+class _ReferenceCard extends ConsumerWidget {
+  const _ReferenceCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final client = ref.watch(activeConnectionProvider).value?.client;
+    if (client == null || !client.canListReferences) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: ListPageCard(
+        title: l10n.chatReferenceTitle,
+        margin: const EdgeInsets.symmetric(horizontal: PlusPanelMetrics.side),
+        children: [
+          if (client.canBrowseDirectories)
+            ListPageRow(
+              icon: AppIcons.folder,
+              title: l10n.chatFolder,
+              onTap: () => Navigator.pop(context, const AttachChoice(AttachSource.folder)),
+            ),
+          ListPageRow(
+            icon: AppIcons.enterPath,
+            title: l10n.chatEnterPath,
+            onTap: () => Navigator.pop(context, const AttachChoice(AttachSource.path)),
+          ),
+        ],
+      ),
     );
   }
 }

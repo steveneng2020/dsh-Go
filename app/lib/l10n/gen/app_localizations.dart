@@ -7328,6 +7328,24 @@ abstract class L10n {
   /// **'文件夹'**
   String get chatFolder;
 
+  /// No description provided for @chatEnterPath.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入路径'**
+  String get chatEnterPath;
+
+  /// No description provided for @chatReferenceUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'这个路径写不成引用'**
+  String get chatReferenceUnsupported;
+
+  /// No description provided for @chatReferenceTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'引用路径'**
+  String get chatReferenceTitle;
+
   /// No description provided for @chatChat.
   ///
   /// In zh, this message translates to:

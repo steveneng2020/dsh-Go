@@ -188,6 +188,10 @@ String? _jsonObjectAt(String text, int start) {
 /// occupants.
 const dshGoBridgePackage = 'dsh-go-bridge';
 
+/// The runtime's composer upload menu ([runtime/bridge/dsh-composer-kit]): a
+/// shipped browser half, so it is not a third-party web plugin to seat.
+const dshComposerKitPackage = 'dsh-composer-kit';
+
 /// Path of the bridge's inventory route.
 const bridgeInventoryPath = '/dsh-go/v1/inventory';
 
@@ -469,8 +473,9 @@ class ClientInventory {
   bool isOfficial(String package) => packages[package]?.official ?? isOfficialPackageName(package);
 }
 
-/// Ships with DSH (the `@deepseek-ai` scope), or is the app's bridge.
-bool isOfficialPackageName(String name) => name.startsWith('@deepseek-ai/') || name == dshGoBridgePackage;
+/// Ships with DSH (the `@deepseek-ai` scope), or ships with the app's runtime.
+bool isOfficialPackageName(String name) =>
+    name.startsWith('@deepseek-ai/') || name == dshGoBridgePackage || name == dshComposerKitPackage;
 
 // -----------------------------------------------------------------------------
 // Calls

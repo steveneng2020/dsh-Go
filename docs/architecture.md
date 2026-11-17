@@ -20,7 +20,8 @@
 │ PRoot Ubuntu 24.04 用户态                                                    │
 │   dsh web --patch /etc/dsh-app/dsh-web.patch.yml --host 127.0.0.1 --port …  │
 │     ├─ 官方 DSH 引擎（runtime/patches 打了补丁）                              │
-│     └─ dsh-go-bridge（Cordis 插件：/dsh-go/v1/*，原生插件协议/伙伴/删除/配置） │
+│     ├─ dsh-go-bridge（Cordis 插件：/dsh-go/v1/*，原生插件协议/伙伴/删除/配置） │
+│     └─ dsh-composer-kit（Cordis 插件：网页输入条的图片/文件/文件夹/路径菜单）  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -65,7 +66,7 @@ Flutter Dart ── MethodChannel ──> Swift（DshPlugin / EngineChannel）
 | `packages/dsh_remote/` | 远程传输：账号、SSH 宿主、Noise IK 加密通道、WebRTC/中继、隧道 carrier | `lib/dsh_remote.dart` | 依赖 dsh_client 的 carrier 抽象 |
 | `packages/dsh_tavern/` | SillyTavern 兼容酒馆引擎（纯 Dart，191 个测试文件） | `lib/dsh_tavern.dart` | 与 AGPL 上游同许可，来源见 NOTICES |
 | `packages/dartssh2/` | vendored dartssh2 4.1.0 + 补丁 | `VENDORED.md` | app 的 SSH 链路用它 |
-| `runtime/` | 引擎运行时：构建脚本、锁定补丁、桥、boot/direct 启动、iOS 特化与测试 | `build-runtime.sh`、`patches/series`、`bridge/`、`ios/` | Android 产物在 `runtime/out/<abi>/`；iOS 构建输出不入库 |
+| `runtime/` | 引擎运行时：构建脚本、锁定补丁、两个随引擎自带的 Cordis 插件、桥、boot/direct 启动、iOS 特化与测试 | `build-runtime.sh`、`patches/series`、`bridge/`、`ios/` | Android 产物在 `runtime/out/<abi>/`；iOS 构建输出不入库；`bridge/dsh-go-bridge`（App 桥）与 `bridge/dsh-composer-kit`（网页输入条的上传菜单）都经 `rtbuild.overlay_entries` 挂进 `/etc/dsh-app/dsh-web.patch.yml` |
 | `sdk/plugin-kit/` | 原生插件作者 SDK（schema、checker、视图解析 JS 孪生、技能） | `bin/check.mjs`、`schema/` | private 包，不发 npm |
 | `examples/plugins/` | 10 个插件示例 + e2e（只覆盖 weather/usage/quick） | 各 `package.json` `scripts.check` | |
 | `services/share-worker/` | Cloudflare Worker：分享链接、下载、市场/工坊、统计 | `src/index.ts` | sparse-checkout 外 |
@@ -364,6 +365,7 @@ UI 输入 ─> ChatController.send() ─> DshClient.prompt(sessionId, text)
 - 注入方式：本机 = rtbuild 生成 `/etc/dsh-app/dsh-web.patch.yml` + `dsh web --patch`；
   远程 = 插件包的 `dsh.bundle.patch`。`cordis.patch.yml` 里 `# --- shared rows ---` 是构建切分标记，改缩进会构建失败。
 - 新增路由要同时改：`bridge/lib/index.js`（分派 + `CAPABILITIES`）、`bridge-contract.md`、客户端消费端。
+- 只改网页版的插件（`dsh.bundle.patch` 里没有 shared rows）走同一个 overlay，但由 `rtbuild.py` 单独生成插入行：`--composer-kit` → `dsh-composer-kit`，路由到 `/opt/dsh-go/dsh-composer-kit`。
 
 ### 5.4 运行时构建与分层升级
 

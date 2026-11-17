@@ -4168,6 +4168,15 @@ class L10nEn extends L10n {
   String get chatFolder => 'Folder';
 
   @override
+  String get chatEnterPath => 'Enter path';
+
+  @override
+  String get chatReferenceUnsupported => 'This path cannot be referenced';
+
+  @override
+  String get chatReferenceTitle => 'Reference a path';
+
+  @override
   String get chatChat => 'Chat';
 
   @override

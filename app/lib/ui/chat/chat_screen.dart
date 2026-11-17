@@ -86,6 +86,7 @@ import '../shell/drawer/folder_sheets.dart';
 import '../theme/app_icons.dart';
 import '../theme/theme.dart';
 import '../wallpaper/wallpaper_backdrop.dart';
+import '../workspace/directory_picker.dart' show askFolderPath, showDirectoryPicker;
 import '../workspace/workspace_switcher.dart' show showWorkspaceSheet;
 import '../workspace/workspaces_page.dart';
 import 'balance_widgets.dart';
@@ -1084,6 +1085,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
         return;
       }
       if (choice is! AttachChoice || !ownsDraft()) return;
+      if (choice.source == AttachSource.folder || choice.source == AttachSource.path) {
+        // A reference, not an attachment: no room or byte budget applies.
+        await _referencePath(choice.source);
+        return;
+      }
       if (room <= 0) {
         _toast(appL10n.chatAttachmentLimit(maxAttachments));
         return;
@@ -1096,6 +1102,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
           AttachSource.gallery => PickedAttachments(await picker.pickImages(limit: room)),
           AttachSource.camera => PickedAttachments([?await picker.takePhoto()]),
           AttachSource.files => await picker.pickFiles(limit: room, heldBytes: totalAttachmentBytes(_drafts)),
+          // Handled before this switch: they insert a reference, not a file.
+          AttachSource.folder || AttachSource.path => const PickedAttachments([]),
         };
       } on PlatformException catch (e) {
         if (!ownsDraft()) return;
@@ -1131,6 +1139,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> with WidgetsBindingObse
       _ => 'png',
     };
     _addDrafts([DraftAttachment.sniff('${appL10n.fileImageName}.$extension', data)]);
+  }
+
+  /// 文件夹 / 输入路径: an `@path` reference in the draft, the way the `@`
+  /// picker writes one. Nothing is uploaded; the Agent reads the path.
+  Future<void> _referencePath(AttachSource source) async {
+    final path = source == AttachSource.folder
+        ? await showDirectoryPicker(context)
+        : await askFolderPath(context);
+    if (path == null || path.isEmpty || !mounted) return;
+    final mention = formatFileMention(path, directory: source == AttachSource.folder);
+    if (mention == null) {
+      _toast(appL10n.chatReferenceUnsupported);
+      return;
+    }
+    _insertText(mention);
   }
 
   void _addDrafts(List<DraftAttachment> picked, {String? problem}) {
