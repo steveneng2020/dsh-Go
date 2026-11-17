@@ -2,6 +2,32 @@
 
 每个版本先中文、后英文。发版时把对应版本的正文（不含版本标题）作为 Release 正文，见 `docs/release.md`。
 
+## 1.1.0-fork.1 · 2026-11-17
+
+> 版本 `1.1.0-fork.1` / 基于上游 `1.1.0` / 包名 `dsh.android.go`。版本号规则见 [fork.md](fork.md)。
+
+### 中文
+
+**个人 fork 的第一版：换了发行身份，并给网页版输入条补上四项上传入口**
+
+- **包名改成 `dsh.android.go`，与上游是两个独立应用。** 原先和上游同名，装了这个就不能装那个，想对比也做不到。现在可以并排装：上游管上游自己的更新，本 fork 走本仓库。切过来要注意签名不同，从上游版本换过来得先卸载（有 root 可直接覆盖）。
+- **网页版输入条多了一个回形针键，四项都能用了。** 点开是**图片**、**文件**、**文件夹**、**输入路径**。网页版原来左下角只有一个回形针，只能挑单个文件，而且在本机上（引擎跑在手机里）根本挑不动——它要的是桌面端的路径桥，网页版拿不到。现在图片和文件可以直接多选进附件栏，文件夹能在主机上逐层点进去，输入路径可以自己填，后两项把 `@路径` 写进输入框让 AI 自己去读，不发送文件本体。旁边的加号是 DSH Web 自带的，没动，两者互不影响。
+- **原生 ＋ 面板新增「引用路径」一栏。** 和网页版同一个能力：**文件夹**在主机上浏览，**输入路径**手填绝对路径。主机不支持浏览时只剩输入路径，不支持引用时整栏不显示，点了不会是死胡同。
+- **关于页多了「本版本仓库」，并保留上游署名。** 下载、更新、问题反馈指向本仓库；主仓库与原作者单独列出。这不是可选项：AGPL-3.0 和上游的再发布条款都要求保留。
+- **更新检查指向本仓库的 Releases。** 上游 Release 的包名是 `io.github.ccch1mneyyy.dsh_app`，本 fork 装不上也不该装，所以不再去问它。下载镜像与加速器沿用原来的（本 fork 没有上游那个下载桶的凭据），GitHub 直连不稳时仍能走加速。<!-- fork-rebrand: keep -->
+- **版本号改成 `X.Y.Z-fork.N`。** 前面的 `X.Y.Z` 是所基于的上游版本，`N` 是本 fork 第几次发版，一眼能看出落后上游多少、自己发了几版。版本号只影响显示，能否覆盖安装看的是构建分钟换算出来的 versionCode，仍然单调递增。
+
+### English
+
+**First release of the personal fork: new release identity, plus four upload entries on the web composer**
+
+- **The package is now `dsh.android.go`, a separate app from upstream.** Sharing upstream's package name meant only one of the two could be installed, so comparing them was impossible. Both can now be installed side by side: upstream handles its own updates, this fork uses its own repository. Note the signing key differs — switching from an upstream build means uninstalling it first (with root you can install over it).
+- **The web composer has a paperclip key with four working entries.** It opens **Images**, **Files**, **Folder** and **Enter a path**. The web composer used to have a single paperclip that only took one file, and on a phone-hosted engine it could not pick anything at all — it wants the desktop path bridge, which the WebView never provides. Images and files now multi-select straight into the attachment bar, a folder can be browsed on the host, and a path can be typed; the last two write an `@path` reference into the composer for the AI to read instead of uploading the file. The `+` beside it is DSH Web's own and is untouched; the two do not interfere.
+- **The native ＋ panel gains a 「引用路径」 (reference path) card.** Same capability as the web: **Folder** browses the host, **Enter a path** takes an absolute path. Only the typed path is offered when the host cannot browse, and the whole card is hidden when it cannot resolve references at all, so no row leads to a dead end.
+- **The About page gains 「本版本仓库」 and keeps the upstream credit.** Downloads, updates and issue reports point at this repository; the upstream repository and original author are listed separately. This is not optional: AGPL-3.0 and upstream's redistribution terms both require it.
+- **The update check now asks this repository's Releases.** Upstream release APKs carry the package `io.github.ccch1mneyyy.dsh_app`, which this fork cannot install and should not install, so it no longer asks. The download mirrors and accelerators stay as they were (this fork has no credentials for upstream's download bucket), so unstable direct GitHub downloads still have a fallback.<!-- fork-rebrand: keep -->
+- **The version is `X.Y.Z-fork.N`.** `X.Y.Z` is the upstream version this is based on and `N` is which release of this fork it is, so how far behind upstream you are and how many releases you have made are both visible at a glance. The name is display only: whether an update installs over the old one is decided by the build-minute versionCode, which still only increases.
+
 ## 1.1.0 · 2026-11-15
 
 ### 中文

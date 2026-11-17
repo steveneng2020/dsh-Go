@@ -57,7 +57,7 @@ fork/main   发布分支 = 上游 + 两条特性 + 本 fork 的发行身份（�
 `tooling/build_number.py` 同一套编码。它单调递增，Android 靠它判断能否覆盖安装。
 同一版本名重新打包不算新版本。
 
-**改版本名要动 5 个文件**，`tooling/fork_rebrand.py` 会一起改，
+**改版本名要动 6 个文件**，`tooling/fork_rebrand.py` 会一起改，
 `tooling/test_build_number.py` 会校验它们一致：
 
 | 文件 | 内容 |
@@ -65,6 +65,7 @@ fork/main   发布分支 = 上游 + 两条特性 + 本 fork 的发行身份（�
 | `app/pubspec.yaml` | `version: 1.1.0-fork.1` |
 | `app/lib/state/app_info.dart` | `DSH_APP_VERSION` 的 `defaultValue` |
 | `docs/guide/README.md` | `> dsh-go 1.1.0-fork.1` |
+| `docs/guide/harmony/README.md` | 同上 |
 | `app/assets/skills/dsh-go-guide/README.md` | 同上 |
 | `app/assets/skills/dsh-go-guide/harmony-README.md` | 同上 |
 
