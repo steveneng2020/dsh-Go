@@ -95,7 +95,10 @@ def extract_source(archive, source, destination):
 
 def toolchain(ndk, source):
     host = HOSTS.get(sys.platform)
-    if host is None or platform.machine().lower() not in ("x86_64", "amd64", "arm64"):
+    # Linux reports aarch64 where Darwin reports arm64 (fork patch: the NDK ships
+    # only an x86_64 host toolchain, so an aarch64 Linux host runs it under qemu
+    # exactly like an arm64 macOS host runs it under Rosetta).
+    if host is None or platform.machine().lower() not in ("x86_64", "amd64", "arm64", "aarch64"):
         raise ValueError(f"unsupported build host {sys.platform}/{platform.machine()}")
     ndk = Path(ndk).resolve()
     properties = {}

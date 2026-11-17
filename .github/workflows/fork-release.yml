@@ -1,0 +1,266 @@
+# Builds the fork's release APK on an x86_64 Linux runner and attaches it to a
+# GitHub release.
+#
+# Why this runs in CI rather than on the maintainer's machine: a release APK
+# needs Dart's AOT compiler (`gen_snapshot`), and the Flutter SDK ships that
+# only as an x86_64 binary. The maintainer's build environment is aarch64, where
+# gen_snapshot would have to run under qemu-user — which cannot host it (the VM
+# reserves large address ranges and dies with `QEMU internal SIGSEGV MAPERR`).
+# An x86_64 runner has no such problem.
+#
+#   gh workflow run fork-release.yml --ref fork/main
+#   gh workflow run fork-release.yml --ref fork/main -f tag=v1.1.0-fork.2 -f flavor=all
+#
+# The version *name* comes from app/pubspec.yaml (`X.Y.Z-fork.N`, see
+# docs/fork.md); the versionCode is the build minute (tooling/build_number.py),
+# so a later build always installs over an earlier one. Signing uses the fork's
+# own key, from repository secrets:
+#
+#   DSH_KEYSTORE_BASE64    base64 -w0 dsh-release.jks
+#   DSH_KEYSTORE_PASSWORD  the store password
+#   DSH_KEY_ALIAS          the key alias (dsh)
+#   DSH_KEY_PASSWORD       the key password (same as the store password here)
+#
+# Without them the APK carries Gradle's debug key: installable, but it cannot
+# update an earlier fork build, and docs/release.md's apksigner check refuses it.
+name: Fork release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag; empty means v<version name> from app/pubspec.yaml'
+        required: false
+        default: ''
+      flavor:
+        description: 'APK flavors to build'
+        required: false
+        default: arm64
+        type: choice
+        options: [arm64, x64, all]
+      draft:
+        description: 'Create the release as a draft'
+        required: false
+        default: false
+        type: boolean
+      delta_from:
+        description: 'Delta patches from this many previous releases (0 = none)'
+        required: false
+        default: '0'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fork-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: 3.47.7
+  GRADLE_VERSION: 9.3.1
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Version
+        id: version
+        env:
+          WANTED: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          name=$(sed -n 's/^version:[[:space:]]*\([^+]*\).*/\1/p' app/pubspec.yaml | tr -d '[:space:]')
+          [ -n "$name" ] || { echo "no version in app/pubspec.yaml" >&2; exit 1; }
+          tag=${WANTED:-v$name}
+          printf 'name=%s\ntag=%s\n' "$name" "$tag" >>"$GITHUB_OUTPUT"
+          echo "building DSH Go $name, tag $tag"
+
+      # app/android/local.properties is gitignored, and both `flutter build apk`
+      # (for sdk.dir) and runtime/tawcroot/build.py (for the NDK) read it when the
+      # environment does not say. Same two lines ci.yml's android job writes.
+      - name: Flutter plugins and local.properties
+        working-directory: app
+        run: |
+          set -euo pipefail
+          flutter pub get --enforce-lockfile
+          printf 'sdk.dir=%s\nflutter.sdk=%s\n' "$ANDROID_HOME" "$FLUTTER_ROOT" >android/local.properties
+
+      # The runtime (proot rootfs + the web bundles, one of which is this fork's
+      # composer kit) is a build input the repository does not track:
+      # runtime/out/<abi>/ must exist before a release build, or
+      # tooling/check_runtime_bundle.py refuses to go on. Every download is
+      # hash-checked by the script, so a stale cache is harmless; without it the
+      # job re-downloads a few hundred MB of rootfs pieces each time.
+      - name: Restore the runtime download cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: runtime/.cache
+          key: runtime-downloads-v1-${{ hashFiles('runtime/build-runtime.sh', 'runtime/locks/**') }}
+          restore-keys: runtime-downloads-v1-
+
+      - name: Runtime
+        env:
+          FLAVOR: ${{ inputs.flavor }}
+        run: |
+          set -euo pipefail
+          case "$FLAVOR" in
+            x64) bash runtime/build-runtime.sh x86_64 ;;
+            *) bash runtime/build-runtime.sh arm64-v8a ;;
+          esac
+          if [ "$FLAVOR" = all ]; then bash runtime/build-runtime.sh x86_64; fi
+          python3 -I tooling/check_runtime_bundle.py \
+            $([ "$FLAVOR" = all ] && echo arm64 x64 || echo "$FLAVOR")
+
+      - name: Save the runtime download cache
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: runtime/.cache
+          key: runtime-downloads-v1-${{ hashFiles('runtime/build-runtime.sh', 'runtime/locks/**') }}
+
+      # tawcroot's library and the Flutter plugins are compiled with the pinned
+      # NDK, and runtime/tawcroot/build.py needs to find it by path: it looks at
+      # ANDROID_NDK_HOME, then the SDK's ndk/<version>, then app/android/local.properties
+      # (which is gitignored, so a runner has none). Installing it explicitly is
+      # both faster and unambiguous.
+      - name: NDK
+        run: |
+          set -euo pipefail
+          version=$(python3 -c 'import json;print(json.load(open("runtime/tawcroot/source.json"))["ndkVersion"])')
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          [ -n "$sdk" ] || { echo 'no ANDROID_HOME on this runner' >&2; exit 1; }
+          if [ ! -d "$sdk/ndk/$version" ]; then
+            yes | "$sdk/cmdline-tools/latest/bin/sdkmanager" "ndk;$version" >/dev/null
+          fi
+          echo "ANDROID_NDK_HOME=$sdk/ndk/$version" >>"$GITHUB_ENV"
+          cat "$sdk/ndk/$version/source.properties" | head -3
+
+      - name: Signing key
+        id: key
+        env:
+          KEYSTORE: ${{ secrets.DSH_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.DSH_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.DSH_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.DSH_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE:-}" ] || [ -z "${STORE_PASSWORD:-}" ] || [ -z "${KEY_ALIAS:-}" ] || [ -z "${KEY_PASSWORD:-}" ]; then
+            echo 'signed=false' >>"$GITHUB_OUTPUT"
+            echo '::warning::no signing secrets are set; this APK will carry Gradle'"'"'s debug key and cannot update an earlier fork build'
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s' "$KEYSTORE" | base64 -d >"$RUNNER_TEMP/keys/release.jks"
+          {
+            echo "storeFile=$RUNNER_TEMP/keys/release.jks"
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } >app/android/key.properties
+          chmod 600 app/android/key.properties
+          echo 'signed=true' >>"$GITHUB_OUTPUT"
+
+      - name: Build
+        env:
+          FLAVOR: ${{ inputs.flavor }}
+          DSH_BETA_TOKEN_FILE: ''
+        run: bash tooling/build-apk.sh -f "$FLAVOR"
+
+      - name: Check the APKs
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apks=(app/build/app/outputs/flutter-apk/*-release.apk)
+          [ "${#apks[@]}" -gt 0 ] || { echo 'build-apk produced no release APK' >&2; exit 1; }
+          # The runner image's build-tools version is not ours to assume.
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          tools=$(ls -1d "$sdk"/build-tools/*/ 2>/dev/null | sort -V | tail -n 1)
+          [ -n "$tools" ] || { echo 'no build-tools in the Android SDK' >&2; exit 1; }
+          echo "using $tools"
+          for apk in "${apks[@]}"; do
+            echo "=== $(basename "$apk") · $(stat -c %s "$apk") bytes ==="
+            "${tools}aapt2" dump packagename "$apk"
+            "${tools}apksigner" verify -v --min-sdk-version 21 --print-certs "$apk" |
+              grep -E '^(Verifies|Verified using v[0-9.]+ scheme.*: true|Signer #1 certificate DN:)' || true
+          done
+
+      # release_assets.py is the one place that knows the asset names, SHA256SUMS
+      # and update.json the app reads (docs/release.md). It takes the build
+      # number from the APKs themselves. Its default source is arm64 only, so a
+      # multi-flavor build has to name every APK it produced.
+      - name: Release assets
+        env:
+          DELTA_FROM: ${{ inputs.delta_from }}
+          FLAVOR: ${{ inputs.flavor }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          name='${{ steps.version.outputs.name }}'
+          rm -f "$RUNNER_TEMP/notes.md"
+          if notes=$(python3 tooling/changelog_notes.py "$name"); then
+            printf '%s\n' "$notes" >"$RUNNER_TEMP/notes.md"
+            extra=(--notes "$RUNNER_TEMP/notes.md")
+          else
+            echo "::warning::no changelog section for $name; the release body will be empty"
+            extra=()
+          fi
+          apk=app/build/app/outputs/flutter-apk
+          sources=()
+          case "$FLAVOR" in
+            all) sources=("arm64=$apk/app-arm64-release.apk" "x64=$apk/app-x64-release.apk") ;;
+            *) sources=("$FLAVOR=$apk/app-$FLAVOR-release.apk") ;;
+          esac
+          python3 tooling/release_assets.py --delta-from "$DELTA_FROM" "${extra[@]}" "${sources[@]}"
+          # release_assets.py writes the same notes into update.json; reuse the
+          # file for the release body so the app and the release page agree.
+          if [ -f "$RUNNER_TEMP/notes.md" ]; then cp "$RUNNER_TEMP/notes.md" dist/notes.md; fi
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          DRAFT: ${{ inputs.draft }}
+          SIGNED: ${{ steps.key.outputs.signed }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          flags=(--title "DSH Go ${{ steps.version.outputs.name }}")
+          [ "$DRAFT" = true ] && flags+=(--draft)
+          # notes.md is the body, not an asset: keep it out of what gets uploaded.
+          body=()
+          [ -f dist/notes.md ] && body=(--notes-file dist/notes.md)
+          # Delta patches are optional (only with delta_from > 0), so glob them.
+          assets=(dist/*.apk dist/*.dshdelta dist/SHA256SUMS dist/update.json)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            [ "${#body[@]}" -eq 0 ] || gh release edit "$TAG" "${body[@]}"
+            gh release upload "$TAG" "${assets[@]}" --clobber
+          else
+            gh release create "$TAG" "${assets[@]}" "${flags[@]}" "${body[@]}"
+          fi
+          {
+            echo "### DSH Go ${{ steps.version.outputs.name }} · \`$TAG\`"
+            echo
+            echo '```'
+            cat dist/SHA256SUMS
+            echo '```'
+            if [ "$SIGNED" = true ]; then
+              echo 'Signed with the fork release key.'
+            else
+              echo '**Signed with Gradle'"'"'s debug key** — no signing secrets were set.'
+            fi
+          } >>"$GITHUB_STEP_SUMMARY"
