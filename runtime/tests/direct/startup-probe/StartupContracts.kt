@@ -1,4 +1,4 @@
-package io.github.ccch1mneyyy.dsh_app.runtime
+package dsh.android.go.runtime
 
 import java.io.File
 
