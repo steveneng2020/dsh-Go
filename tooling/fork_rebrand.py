@@ -79,6 +79,11 @@ SRC_SETS = ["main", "test", "androidTest"]
 # 「旧包名 → 新包名」这段说明。
 SKIP_FILES = {"tooling/fork_rebrand.py", "docs/fork.md"}
 
+# 行级豁免：行尾写上 [KEEP] 的行（含上一行，处理行尾注释在上一行情形的例外不谈）
+# 既不被改写，也不计入 leftovers。用于「必须原样引用上游包名」的说明文字，
+# 例如 README：「上游是 io.github.ccch1mneyyy.dsh_app，两个是独立应用」。
+KEEP = "fork-rebrand: keep"
+
 
 def text_files(root: pathlib.Path):
     """[root] 下所有该扫描的文本文件，稳定的顺序。
@@ -97,6 +102,15 @@ def text_files(root: pathlib.Path):
         yield path
 
 
+def _kept(line: str) -> bool:
+    return KEEP in line
+
+
+def _strip_kept(text: str) -> str:
+    """把带 [KEEP] 的行换成空行（保留行号），剩下的内容才参与改写与残留判定。"""
+    return "\n".join("" if _kept(line) else line for line in text.split("\n"))
+
+
 def rewrite_packages(root: pathlib.Path, apply: bool) -> list[str]:
     """替换文件内容里的包名，返回改过的相对路径。"""
     changed = []
@@ -105,9 +119,13 @@ def rewrite_packages(root: pathlib.Path, apply: bool) -> list[str]:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
-        if OLD_PKG not in text and OLD_PATH not in text:
+        scannable = _strip_kept(text)
+        if OLD_PKG not in scannable and OLD_PATH not in scannable:
             continue
-        new = text.replace(OLD_PKG, NEW_PKG).replace(OLD_PATH, NEW_PATH)
+        new = "\n".join(
+            line if _kept(line) else line.replace(OLD_PKG, NEW_PKG).replace(OLD_PATH, NEW_PATH)
+            for line in text.split("\n")
+        )
         if new == text:
             continue
         changed.append(str(path.relative_to(root)))
@@ -174,7 +192,8 @@ def leftovers(root: pathlib.Path) -> list[str]:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
-        if OLD_PKG in text or OLD_PATH in text:
+        scannable = _strip_kept(text)
+        if OLD_PKG in scannable or OLD_PATH in scannable:
             found.append(str(path.relative_to(root)))
     return found
 

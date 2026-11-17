@@ -2,6 +2,12 @@
   <b>简体中文</b> · <a href="README.en.md">English</a>
 </p>
 
+> **这是 [steveneng2020](https://github.com/steveneng2020) 的个人 fork，不是官方版本。**
+> 包名 `dsh.android.go`，与上游 `io.github.ccch1mneyyy.dsh_app` 是两个独立应用，可以同时安装。  <!-- fork-rebrand: keep -->
+> 下载、更新、问题反馈都走 [本仓库](https://github.com/steveneng2020/dsh-Go)；
+> 上游主仓库是 <https://github.com/ccch1mneyyy/dsh-go>，原作者 [ccch1mneyyy](https://github.com/ccch1mneyyy)。
+> 本 fork 的改动与发版规则见 [docs/fork.md](docs/fork.md)。
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-zh-dark.webp">
@@ -14,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ccch1mneyyy/dsh-go/releases/latest"><img alt="Android 8+" src="https://img.shields.io/badge/Android-8%2B-4B67B4?style=flat-square&logo=android&logoColor=white&labelColor=2B3245"></a>
+  <a href="https://github.com/steveneng2020/dsh-Go/releases/latest"><img alt="Android 8+" src="https://img.shields.io/badge/Android-8%2B-4B67B4?style=flat-square&logo=android&logoColor=white&labelColor=2B3245"></a>
   <a href="LICENSE"><img alt="许可证 AGPL-3.0" src="https://img.shields.io/badge/%E8%AE%B8%E5%8F%AF%E8%AF%81-AGPL--3.0-4B67B4?style=flat-square&labelColor=2B3245"></a>
   <a href="https://forum.dshtui.com"><img alt="论坛" src="https://img.shields.io/badge/%E8%AE%BA%E5%9D%9B-forum.dshtui.com-4B67B4?style=flat-square&labelColor=2B3245"></a>
   <a href="https://qm.qq.com/q/OEy2RqZnqY"><img alt="QQ 群 1132118290" src="https://img.shields.io/badge/QQ%20%E7%BE%A4-1132118290-4B67B4?style=flat-square&logo=tencentqq&logoColor=white&labelColor=2B3245"></a>
@@ -47,7 +53,7 @@
 <p align="center">从 GitHub Releases 或官网下载页获取最新版 APK，常见手机选 arm64 包。</p>
 
 <p align="center">
-  <a href="https://github.com/ccch1mneyyy/dsh-go/releases/latest"><img alt="从 GitHub Releases 下载" src="https://img.shields.io/badge/GitHub%20Releases-%E4%B8%8B%E8%BD%BD%20APK-4B67B4?style=for-the-badge&logo=github&logoColor=white&labelColor=2B3245"></a>&emsp;<a href="https://go.dshtui.com/download"><img alt="从官网下载页下载" src="https://img.shields.io/badge/go.dshtui.com-%E5%AE%98%E7%BD%91%E4%B8%8B%E8%BD%BD-4B67B4?style=for-the-badge&labelColor=2B3245"></a>
+  <a href="https://github.com/steveneng2020/dsh-Go/releases/latest"><img alt="从 GitHub Releases 下载" src="https://img.shields.io/badge/GitHub%20Releases-%E4%B8%8B%E8%BD%BD%20APK-4B67B4?style=for-the-badge&logo=github&logoColor=white&labelColor=2B3245"></a>&emsp;<a href="docs/fork.md"><img alt="版本规则" src="https://img.shields.io/badge/%E7%89%88%E6%9C%AC-X.Y.Z--fork.N-4B67B4?style=for-the-badge&labelColor=2B3245"></a>
 </p>
 
 <p align="center">
@@ -55,7 +61,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ccch1mneyyy/dsh-go/stargazers"><img alt="GitHub Star 数" src="https://img.shields.io/github/stars/ccch1mneyyy/dsh-go?style=flat-square&logo=github&label=Star&color=4B67B4&labelColor=2B3245"></a>
+  <a href="https://github.com/steveneng2020/dsh-Go/stargazers"><img alt="GitHub Star 数" src="https://img.shields.io/github/stars/steveneng2020/dsh-Go?style=flat-square&logo=github&label=Star&color=4B67B4&labelColor=2B3245"></a>
 </p>
 
 <p align="center">
@@ -186,7 +192,7 @@ DSH Go 提供聊天界面、本机运行环境和远程连接，是基于 [DeepS
 
 安装要求为 Android 8.0（API 26）及以上。Release 页面上的 **arm64** 安装包适用于常见的 64 位 Android 手机；x86_64 设备和模拟器用的 x64 包在发布说明末尾的「其他版本下载」里。仓库没有 32 位 ARM 构建。
 
-1. 从 [GitHub Releases](https://github.com/ccch1mneyyy/dsh-go/releases/latest) 或[官网下载页](https://go.dshtui.com/download)下载对应架构的 APK，并按系统提示允许该安装来源。
+1. 从[本仓库 Releases](https://github.com/steveneng2020/dsh-Go/releases/latest)下载对应架构的 APK，并按系统提示允许该安装来源。本 fork 与上游签名不同、包名不同，从上游版本切过来需要先卸载上游版本（有 root 可直接覆盖安装）。
 2. 首次启动时，选择在本机安装运行环境，或连接远程主机。
 3. 为所选主机配置模型和所需凭据，再开始对话；部分远程渠道需要在主机侧配置。
 
@@ -259,8 +265,8 @@ Android 8 及以上。手机直接下载 Release 页面上的安装包即可，�
 先取得完整源码和项目资源。`app/pubspec.yaml` 声明的字体、图片等都是构建输入，运行时包由下面的脚本生成。
 
 ```bash
-git clone https://github.com/ccch1mneyyy/dsh-go.git
-cd dsh-go
+git clone https://github.com/steveneng2020/dsh-Go.git
+cd dsh-Go
 
 bash tooling/setup-toolchain.sh
 source tooling/env.sh
@@ -307,7 +313,7 @@ DSH_BETA_TOKEN_FILE= bash tooling/build-apk.sh --dry-run -f all
 
 ## 参与贡献
 
-问题反馈和改进建议可提交到 [Issues](https://github.com/ccch1mneyyy/dsh-go/issues)。代码、文档和翻译贡献请先看 [CONTRIBUTING.md](CONTRIBUTING.md)。插件作者可以从[插件教程](docs/plugins/README.md)和 [SDK](sdk/plugin-kit/README.md)开始。
+本 fork 的问题反馈和改进建议请提交到[本仓库 Issues](https://github.com/steveneng2020/dsh-Go/issues)；与 fork 无关的上游问题请走[上游 Issues](https://github.com/ccch1mneyyy/dsh-go/issues)。代码、文档和翻译贡献请先看 [CONTRIBUTING.md](CONTRIBUTING.md)。插件作者可以从[插件教程](docs/plugins/README.md)和 [SDK](sdk/plugin-kit/README.md)开始。
 
 安全问题请按 [SECURITY.md](SECURITY.md) 报告，避免在公开 Issue 中提交漏洞细节或凭据。
 

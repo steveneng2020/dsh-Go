@@ -17150,6 +17150,18 @@ abstract class L10n {
   /// **'GitHub 主页'**
   String get hubAboutGithub;
 
+  /// No description provided for @hubAboutForkRepo.
+  ///
+  /// In zh, this message translates to:
+  /// **'本版本仓库'**
+  String get hubAboutForkRepo;
+
+  /// No description provided for @hubAboutUpstreamRepo.
+  ///
+  /// In zh, this message translates to:
+  /// **'主仓库（上游）'**
+  String get hubAboutUpstreamRepo;
+
   /// No description provided for @hubAboutNewVersion.
   ///
   /// In zh, this message translates to:

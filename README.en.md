@@ -2,6 +2,12 @@
   <a href="README.md">简体中文</a> · <b>English</b>
 </p>
 
+> **This is a personal fork by [steveneng2020](https://github.com/steveneng2020), not an official release.**
+> The package is `dsh.android.go`; it is a separate app from upstream's `io.github.ccch1mneyyy.dsh_app` and both can be installed side by side.  <!-- fork-rebrand: keep -->
+> Downloads, updates and issue reports go to [this repository](https://github.com/steveneng2020/dsh-Go).
+> The upstream repository is <https://github.com/ccch1mneyyy/dsh-go>, by [ccch1mneyyy](https://github.com/ccch1mneyyy).
+> Fork changes and release rules: [docs/fork.md](docs/fork.md).
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-en-dark.webp">
@@ -14,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ccch1mneyyy/dsh-go/releases/latest"><img alt="Android 8+" src="https://img.shields.io/badge/Android-8%2B-4B67B4?style=flat-square&logo=android&logoColor=white&labelColor=2B3245"></a>
+  <a href="https://github.com/steveneng2020/dsh-Go/releases/latest"><img alt="Android 8+" src="https://img.shields.io/badge/Android-8%2B-4B67B4?style=flat-square&logo=android&logoColor=white&labelColor=2B3245"></a>
   <a href="LICENSE"><img alt="License AGPL-3.0" src="https://img.shields.io/badge/license-AGPL--3.0-4B67B4?style=flat-square&labelColor=2B3245"></a>
   <a href="https://forum.dshtui.com"><img alt="Forum" src="https://img.shields.io/badge/forum-forum.dshtui.com-4B67B4?style=flat-square&labelColor=2B3245"></a>
   <a href="https://qm.qq.com/q/OEy2RqZnqY"><img alt="QQ group 1132118290" src="https://img.shields.io/badge/QQ%20group-1132118290-4B67B4?style=flat-square&logo=tencentqq&logoColor=white&labelColor=2B3245"></a>
@@ -47,7 +53,7 @@
 <p align="center">Get the latest APK from GitHub Releases or the download page at go.dshtui.com. Most phones need the arm64 package.</p>
 
 <p align="center">
-  <a href="https://github.com/ccch1mneyyy/dsh-go/releases/latest"><img alt="Download from GitHub Releases" src="https://img.shields.io/badge/GitHub%20Releases-Download%20APK-4B67B4?style=for-the-badge&logo=github&logoColor=white&labelColor=2B3245"></a>&emsp;<a href="https://go.dshtui.com/download"><img alt="Download from go.dshtui.com" src="https://img.shields.io/badge/go.dshtui.com-Download%20page-4B67B4?style=for-the-badge&labelColor=2B3245"></a>
+  <a href="https://github.com/steveneng2020/dsh-Go/releases/latest"><img alt="Download from GitHub Releases" src="https://img.shields.io/badge/GitHub%20Releases-Download%20APK-4B67B4?style=for-the-badge&logo=github&logoColor=white&labelColor=2B3245"></a>&emsp;<a href="docs/fork.md"><img alt="Versioning" src="https://img.shields.io/badge/version-X.Y.Z--fork.N-4B67B4?style=for-the-badge&labelColor=2B3245"></a>
 </p>
 
 <p align="center">
@@ -55,7 +61,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/ccch1mneyyy/dsh-go/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/ccch1mneyyy/dsh-go?style=flat-square&logo=github&label=Star&color=4B67B4&labelColor=2B3245"></a>
+  <a href="https://github.com/steveneng2020/dsh-Go/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/steveneng2020/dsh-Go?style=flat-square&logo=github&label=Star&color=4B67B4&labelColor=2B3245"></a>
 </p>
 
 <p align="center">
@@ -186,7 +192,7 @@ Capabilities depend on the host and connection. DSHarness Remote currently accep
 
 Installation requires Android 8.0 (API 26) or later. The **arm64** package on the Releases page is for typical 64-bit Android phones; the x64 package for x86_64 devices and emulators is under “Other builds” at the end of the release notes. This repository has no 32-bit ARM build.
 
-1. Download the APK for your device architecture from [GitHub Releases](https://github.com/ccch1mneyyy/dsh-go/releases/latest) or the [download page](https://go.dshtui.com/download), and follow Android's prompt to allow that installation source.
+1. Download the APK for your device architecture from [this repository's Releases](https://github.com/steveneng2020/dsh-Go/releases/latest) and follow Android's prompt to allow that installation source. This fork uses a different signing key and package name than upstream, so switching from an upstream build means uninstalling it first (with root you can install over it).
 2. On first launch, choose an on-device runtime or a remote host.
 3. Configure a model and its credentials for the selected host, then start a conversation. Some remote providers must be configured on the host itself.
 
@@ -259,8 +265,8 @@ The following workflow targets **Linux x86_64**. The toolchain script currently 
 Start with the complete source tree and project assets. Fonts, images and other files declared in `app/pubspec.yaml` are build inputs. The following script generates the runtime bundle.
 
 ```bash
-git clone https://github.com/ccch1mneyyy/dsh-go.git
-cd dsh-go
+git clone https://github.com/steveneng2020/dsh-Go.git
+cd dsh-Go
 
 bash tooling/setup-toolchain.sh
 source tooling/env.sh
@@ -307,7 +313,7 @@ DSH_BETA_TOKEN_FILE= bash tooling/build-apk.sh --dry-run -f all
 
 ## Contribute
 
-Report bugs and suggest improvements in [Issues](https://github.com/ccch1mneyyy/dsh-go/issues). For code, documentation and translation changes, start with [CONTRIBUTING.en.md](CONTRIBUTING.en.md). Plugin authors can use the [plugin guides](docs/plugins/en/README.md) and [SDK](sdk/plugin-kit/README.en.md).
+Report fork-specific bugs and suggestions in [this repository's Issues](https://github.com/steveneng2020/dsh-Go/issues); upstream issues belong in the [upstream tracker](https://github.com/ccch1mneyyy/dsh-go/issues). For code, documentation and translation changes, start with [CONTRIBUTING.en.md](CONTRIBUTING.en.md). Plugin authors can use the [plugin guides](docs/plugins/en/README.md) and [SDK](sdk/plugin-kit/README.en.md).
 
 Report security issues through [SECURITY.en.md](SECURITY.en.md). Keep vulnerability details and credentials out of public issues.
 

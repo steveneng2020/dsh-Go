@@ -21,7 +21,11 @@
 library;
 
 /// GitHub repository the releases live in.
-const updateRepo = 'ccch1mneyyy/dsh-go';
+///
+/// 这是本 fork 自己的仓库：App 只从这里收更新。上游 `ccch1mneyyy/dsh-go`
+/// 的 Release 与本 fork 的包名不同（`dsh.android.go` vs
+/// `io.github.ccch1mneyyy.dsh_app`），装不上，也不该装。  fork-rebrand: keep
+const updateRepo = 'steveneng2020/dsh-Go';
 
 /// `releases/latest` of the REST API: tag, notes, assets with sizes and
 /// SHA-256 digests. Unauthenticated: 60 requests per hour per IP.

@@ -9787,6 +9787,12 @@ class L10nEn extends L10n {
   String get hubAboutGithub => 'GitHub profile';
 
   @override
+  String get hubAboutForkRepo => 'This build\'s repository';
+
+  @override
+  String get hubAboutUpstreamRepo => 'Upstream repository';
+
+  @override
   String get hubAboutNewVersion => 'Update available';
 
   @override

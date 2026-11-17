@@ -29,8 +29,18 @@ abstract final class AppInfo {
   /// The line under the brand mark (welcome page, 关于 dsh-go).
   static String get slogan => appL10n.appSlogan;
 
+  /// This fork's own repository, shown on the About page above the upstream
+  /// credit so a user who installed this build knows where it came from.
+  static const forkRepo = 'steveneng2020/dsh-Go';
+  static const forkRepoUrl = 'https://github.com/steveneng2020/dsh-Go';
+
   /// The original DSH Go author and their personal profiles, not project pages.
+  ///
+  /// 必须保留：上游 README 的「授权范围与再发布」要求 fork 在仓库说明、应用
+  /// 「关于」页与发布页标注主仓库与原作者，AGPL-3.0 也要求保留版权声明。
   static const author = 'ccch1mneyyy';
+  static const upstreamRepo = 'ccch1mneyyy/dsh-go';
+  static const upstreamRepoUrl = 'https://github.com/ccch1mneyyy/dsh-go';
   static const authorBilibiliName = 'ccchimneyyy';
   static const authorBilibiliUrl = 'https://b23.tv/9WBns6Y';
   static const authorXHandle = '@cccch1mneyyyy';

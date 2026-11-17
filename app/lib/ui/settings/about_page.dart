@@ -65,6 +65,21 @@ class AboutPage extends ConsumerWidget {
           ],
         ),
         SettingsSection(
+          title: l10n.hubAboutForkRepo,
+          children: [
+            SettingsTile(
+              key: const ValueKey('about-fork-repo'),
+              title: AppInfo.forkRepo,
+              subtitle: AppInfo.forkRepoUrl,
+            ),
+            SettingsTile(
+              key: const ValueKey('about-upstream-repo'),
+              title: l10n.hubAboutUpstreamRepo,
+              subtitle: AppInfo.upstreamRepo,
+            ),
+          ],
+        ),
+        SettingsSection(
           title: l10n.hubAboutAuthor,
           children: [
             const SettingsTile(title: AppInfo.author),

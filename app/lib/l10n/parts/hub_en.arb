@@ -148,6 +148,8 @@
   "hubAboutBilibili": "Bilibili profile",
   "hubAboutX": "X profile",
   "hubAboutGithub": "GitHub profile",
+  "hubAboutForkRepo": "This build's repository",
+  "hubAboutUpstreamRepo": "Upstream repository",
   "hubAboutNewVersion": "Update available",
   "hubValueSet": "Set",
   "hubValueOff": "Off",

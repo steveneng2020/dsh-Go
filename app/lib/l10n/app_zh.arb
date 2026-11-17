@@ -5626,6 +5626,8 @@
   "hubAboutBilibili": "B站主页",
   "hubAboutX": "X 主页",
   "hubAboutGithub": "GitHub 主页",
+  "hubAboutForkRepo": "本版本仓库",
+  "hubAboutUpstreamRepo": "主仓库（上游）",
   "hubAboutNewVersion": "有新版本",
   "hubValueSet": "已设置",
   "hubValueOff": "未开启",

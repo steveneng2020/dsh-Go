@@ -142,7 +142,8 @@ void main() {
   testWidgets('the separate project star still opens the repository', (tester) async {
     await pump(tester);
     await tap(tester, 'settings-star');
-    expect(opened.map((uri) => uri.toString()), ['https://github.com/ccch1mneyyy/dsh-go']);
+    // 求 star 指向本 fork 的仓库：它就是给这个 App 发更新的地方（updateRepo）。
+    expect(opened.map((uri) => uri.toString()), ['https://github.com/steveneng2020/dsh-Go']);
     expect(store.writes.last.finished, isTrue);
   });
 

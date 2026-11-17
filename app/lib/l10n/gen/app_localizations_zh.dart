@@ -9269,6 +9269,12 @@ class L10nZh extends L10n {
   String get hubAboutGithub => 'GitHub 主页';
 
   @override
+  String get hubAboutForkRepo => '本版本仓库';
+
+  @override
+  String get hubAboutUpstreamRepo => '主仓库（上游）';
+
+  @override
   String get hubAboutNewVersion => '有新版本';
 
   @override
